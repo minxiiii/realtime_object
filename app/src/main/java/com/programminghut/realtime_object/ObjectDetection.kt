@@ -3,7 +3,6 @@ package com.example.realtime_object
 import android.Manifest
 import android.annotation.SuppressLint
 import android.app.Dialog
-import android.content.Context
 import android.content.pm.PackageManager
 import android.graphics.*
 import android.graphics.drawable.ColorDrawable
@@ -21,7 +20,6 @@ import android.view.TextureView
 import android.view.Window
 import android.view.WindowManager
 import android.widget.ImageView
-import android.widget.PopupMenu
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
@@ -30,13 +28,12 @@ import org.tensorflow.lite.support.common.FileUtil
 import org.tensorflow.lite.support.image.ImageProcessor
 import org.tensorflow.lite.support.image.TensorImage
 import org.tensorflow.lite.support.image.ops.ResizeOp
-import org.w3c.dom.Text
 import java.util.Locale
 
 class ObjectDetection : AppCompatActivity() {
 
     lateinit var labels:List<String>
-    var colors = listOf<Int>(
+    var colors = listOf(
         Color.BLUE, Color.BLACK,)
     val paint = Paint()
     lateinit var imageProcessor: ImageProcessor
@@ -90,32 +87,22 @@ class ObjectDetection : AppCompatActivity() {
                 image = imageProcessor.process(image)
 
                 val outputs = model.process(image)
-                val locations = outputs.locationsAsTensorBuffer.floatArray
                 val classes = outputs.classesAsTensorBuffer.floatArray
                 val maxScoreIndex = outputs.scoresAsTensorBuffer.floatArray.indices.maxByOrNull { outputs.scoresAsTensorBuffer.floatArray[it] } ?: -1
                 val scores = floatArrayOf(outputs.scoresAsTensorBuffer.floatArray[maxScoreIndex])
 
 
                 var mutable = bitmap.copy(Bitmap.Config.ARGB_8888, true)
-                val canvas = Canvas(mutable)
-                //create a canvas to draw the frame
 
 
-
-                //variables to store height and width of bitmap
-                val h = mutable.height
-                val w = mutable.width
-                paint.textSize = h/15f //set text size of the Paint to be 1/15th of frame height
-                paint.strokeWidth = h/85f  //set stroke width of the Paint to be 1/85th of frame height
-                var x = 0 //use to access location value of detected object
-                if (!isDetectionComplete && scores.isNotEmpty() && scores[0] > 0.5) { //score higher than 0.5> and draw box and label
+                val objectName = findViewById<TextView>(R.id.objectName)
+                if (!isDetectionComplete && scores.isNotEmpty() && scores[0] > 0.5) { //score higher than 0.5
                     val index = maxScoreIndex //take the object that has the highest scoring detection
                     // Draw bounding boxes and labels
-                    paint.setColor(colors.get(index))
-                    //paint.style = Paint.Style.STROKE //draw outline of box
-                    //canvas.drawRect(RectF(locations.get(x+1)*w, locations.get(x)*h, locations.get(x+3)*w, locations.get(x+2)*h), paint)
-                    paint.style = Paint.Style.FILL //set style of object to draw only text for the label
-                    canvas.drawText(labels.get(classes.get(index).toInt())+" ", locations.get(x+1)*w, locations.get(x)*h, paint)
+                    objectName.text = labels[classes[index].toInt()]
+                    objectName.setTextSize(TypedValue.COMPLEX_UNIT_SP, 25f)
+                   objectName.setTextColor(Color.BLUE)
+
 
                     tts = TextToSpeech(applicationContext, TextToSpeech.OnInitListener { status ->
                         if (status != TextToSpeech.ERROR) {
@@ -154,10 +141,10 @@ class ObjectDetection : AppCompatActivity() {
 
 
         dialogTextView.text = "Swipe Up for text detection"
-
-
         dialogTextView.setTextSize(TypedValue.COMPLEX_UNIT_SP, 15f)
         dialogTextView.setTextColor(Color.RED)
+
+
         dialog.window?.apply {
             clearFlags(WindowManager.LayoutParams.FLAG_DIM_BEHIND) // main screen not dim when dialog pops up
             dialog.window?.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
@@ -170,6 +157,7 @@ class ObjectDetection : AppCompatActivity() {
         dialog.show()
 
     }
+
 
     override fun onDestroy() {
         super.onDestroy()

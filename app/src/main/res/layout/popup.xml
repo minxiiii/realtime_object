@@ -32,13 +32,6 @@
         android:layout_marginTop="500dp"
         android:background="@drawable/rectangle" />
 
-    <TextView
-        android:id="@+id/objectName"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="400dp"
-        android:layout_gravity="center_horizontal"/>
-
 
     <ImageView
         android:layout_width="50dp"
