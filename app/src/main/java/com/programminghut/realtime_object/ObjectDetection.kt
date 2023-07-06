@@ -13,8 +13,11 @@ import android.os.Bundle
 import android.os.Handler
 import android.os.HandlerThread
 import android.speech.tts.TextToSpeech
+import android.speech.tts.UtteranceProgressListener
 import android.util.TypedValue
+import android.view.GestureDetector
 import android.view.Gravity
+import android.view.MotionEvent
 import android.view.Surface
 import android.view.TextureView
 import android.view.Window
@@ -28,14 +31,12 @@ import org.tensorflow.lite.support.common.FileUtil
 import org.tensorflow.lite.support.image.ImageProcessor
 import org.tensorflow.lite.support.image.TensorImage
 import org.tensorflow.lite.support.image.ops.ResizeOp
+import java.lang.Math.abs
 import java.util.Locale
 
-class ObjectDetection : AppCompatActivity() {
+class ObjectDetection : AppCompatActivity(), GestureDetector.OnGestureListener {
 
     lateinit var labels:List<String>
-    var colors = listOf(
-        Color.BLUE, Color.BLACK,)
-    val paint = Paint()
     lateinit var imageProcessor: ImageProcessor
     lateinit var bitmap:Bitmap
     lateinit var imageView: ImageView
@@ -46,6 +47,14 @@ class ObjectDetection : AppCompatActivity() {
     lateinit var model: SsdMobilenetV11Metadata1
     lateinit var tts: TextToSpeech
     private var isDetectionComplete = false
+    private lateinit var gestureDetector: GestureDetector
+    var y1: Float = 0.0f
+    var y2: Float = 0.0f
+
+
+    companion object{
+        const val MIN_DIST = 50
+    }
 
 
 
@@ -56,7 +65,7 @@ class ObjectDetection : AppCompatActivity() {
         getSupportActionBar()?.hide();
         setContentView(R.layout.activity_main)
         get_permission()
-
+        gestureDetector = GestureDetector(this, this)
 
 
 
@@ -81,6 +90,7 @@ class ObjectDetection : AppCompatActivity() {
                 return false
             }
 
+
             override fun onSurfaceTextureUpdated(p0: SurfaceTexture) {
                 bitmap = textureView.bitmap!!
                 var image = TensorImage.fromBitmap(bitmap)
@@ -95,32 +105,32 @@ class ObjectDetection : AppCompatActivity() {
                 var mutable = bitmap.copy(Bitmap.Config.ARGB_8888, true)
 
 
+
                 val objectName = findViewById<TextView>(R.id.objectName)
-                if (!isDetectionComplete && scores.isNotEmpty() && scores[0] > 0.5) { //score higher than 0.5
+                if (!isDetectionComplete) {
                     val index = maxScoreIndex //take the object that has the highest scoring detection
                     // Draw bounding boxes and labels
                     objectName.text = labels[classes[index].toInt()]
-                    objectName.setTextSize(TypedValue.COMPLEX_UNIT_SP, 25f)
-                   objectName.setTextColor(Color.BLUE)
+                    objectName.setTextSize(TypedValue.COMPLEX_UNIT_SP, 40f)
+                    objectName.setTextColor(Color.BLUE)
 
 
                     tts = TextToSpeech(applicationContext, TextToSpeech.OnInitListener { status ->
                         if (status != TextToSpeech.ERROR) {
                             // Choose language
                             tts.language = Locale.ENGLISH
-                            tts.speak(labels.get(classes.get(index).toInt()),TextToSpeech.QUEUE_ADD, null)
+                            var label = labels.get(classes.get(index).toInt())
+                            tts.speak(label ,TextToSpeech.QUEUE_ADD, null)
                             showDialog()
-                            isDetectionComplete = true
+
+
                         }
 
                     })
-
-
-
-
-                    //extract text from labels based on class index
+                    isDetectionComplete = true
 
                 }
+
 
                 imageView.setImageBitmap(mutable)
                 //storing captured frames
@@ -133,16 +143,26 @@ class ObjectDetection : AppCompatActivity() {
 
     }
 
+
+
+
+
     private fun showDialog() {
         val dialog = Dialog(this, R.style.DialogTheme)
         dialog.setContentView(R.layout.popup)
 
         val dialogTextView = dialog.findViewById<TextView>(R.id.dialogTextView)
-
-
         dialogTextView.text = "Swipe Up for text detection"
         dialogTextView.setTextSize(TypedValue.COMPLEX_UNIT_SP, 15f)
         dialogTextView.setTextColor(Color.RED)
+
+        tts = TextToSpeech(applicationContext, TextToSpeech.OnInitListener { status ->
+            if (status != TextToSpeech.ERROR) {
+                // Choose language
+                tts.language = Locale.ENGLISH
+                tts.speak(dialogTextView.text.toString(), TextToSpeech.QUEUE_ADD, null)
+            }
+        })
 
 
         dialog.window?.apply {
@@ -159,10 +179,48 @@ class ObjectDetection : AppCompatActivity() {
     }
 
 
+    override fun onTouchEvent(event: MotionEvent?): Boolean {
+        when (event?.action){
+
+            MotionEvent.ACTION_DOWN -> //action down
+            {
+                y1 = event.y
+            }
+
+            MotionEvent.ACTION_UP-> { // action up
+                y2 = event.y
+
+
+                val valueY: Float = y2 - y1
+
+                if (abs(valueY) > MIN_DIST)
+                {
+                    if (y2 > y1)
+                    {
+                        isDetectionComplete = false
+
+
+
+                    }
+                    else
+                    {
+                        //top swipe
+                    }
+                }
+
+            }
+
+        }
+
+        return super.onTouchEvent(event)
+    }
+
     override fun onDestroy() {
         super.onDestroy()
         model.close()
     }
+
+
 
 
 
@@ -212,6 +270,34 @@ class ObjectDetection : AppCompatActivity() {
         if (grantResults[0] != PackageManager.PERMISSION_GRANTED) {
             get_permission()
         }
+    }
+
+    override fun onDown(p0: MotionEvent): Boolean {
+        //TODO("Not yet implemented")
+        return false
+    }
+
+    override fun onShowPress(p0: MotionEvent) {
+        //TODO("Not yet implemented")
+    }
+
+    override fun onSingleTapUp(p0: MotionEvent): Boolean {
+       // TODO("Not yet implemented")
+        return false
+    }
+
+    override fun onScroll(p0: MotionEvent, p1: MotionEvent, p2: Float, p3: Float): Boolean {
+        //TODO("Not yet implemented")
+        return false
+    }
+
+    override fun onLongPress(p0: MotionEvent) {
+        //TODO("Not yet implemented")
+    }
+
+    override fun onFling(p0: MotionEvent, p1: MotionEvent, p2: Float, p3: Float): Boolean {
+        //TODO("Not yet implemented")
+        return false
     }
 
 
